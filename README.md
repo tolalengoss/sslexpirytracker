@@ -11,10 +11,11 @@ The SSL Certificate Expiry Tracker is an open source web application built with 
   - CSV Export: Export the list of monitored sites and their SSL certificate details to a CSV file.
   - Error Handling: Graceful handling of errors with informative messages.
 
-![sslexpirytracker]()
+![sslexpirytracker](https://tolaleng.com/storage/images/ssltracker/ssltracker-light.png)
+![sslexpirytracker](https://tolaleng.com/storage/images/ssltracker/ssltracker-dark.png)
 
 ## Demo
-🌐 [![Live Demo]() - Check out the working demo
+🌐 [![Live Demo](sslexpirytracker.oss.tolaleng.com) - Check out the working demo
 
 ### 📖 Usage
 - Login: Use the admin credentials specified in the .env file to log in.
