@@ -1,0 +1,384 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSL Certs Tracker - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8 flex">
+        <!-- Sidebar -->
+        <div class="w-1/4 bg-gray-800 rounded-lg p-6 shadow-lg">
+            <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                <i class="fas fa-cog text-blue-500 mr-3"></i>
+                Menu
+            </h2>
+            <ul class="space-y-4">
+                <li>
+                    <a href="#notificationSettings" class="block text-lg font-medium text-gray-300 hover:text-white transition duration-300 flex items-center">
+                        <i class="fas fa-bell text-yellow-400 mr-2"></i>
+                        Notification Settings
+                    </a>
+                </li>
+                <li>
+                    <a href="#certificateThresholdSettings" class="block text-lg font-medium text-gray-300 hover:text-white transition duration-300 flex items-center">
+                        <i class="fas fa-exclamation-triangle text-yellow-400 mr-2"></i>
+                        Certs Threshold Settings
+                    </a>
+                </li>
+                <li>
+                    <a href="#passwordChangeSettings" class="block text-lg font-medium text-gray-300 hover:text-white transition duration-300 flex items-center">
+                        <i class="fas fa-lock text-green-400 mr-2"></i>
+                        Change Admin Password
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="w-3/4 ml-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold flex items-center">
+                    <i class="fas fa-cog mr-3 text-blue-500"></i>
+                    System Settings
+                </h1>
+                <div class="flex space-x-4">
+                    <a href="{{ url_for('index') }}" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center">
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        Back to Dashboard
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Logout
+                    </a>
+                </div>
+            </div>
+
+            <!-- Settings Form -->
+            <form id="settingsForm" class="space-y-6">
+                <!-- Notification Channel Selection -->
+                <div id="notificationSettings" class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                        <i class="fas fa-bell text-yellow-400 mr-3"></i>
+                        Notification Channel Settings
+                    </h2>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Select Notification Channel
+                            </label>
+                            <select id="notification_channel" class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300" onchange="updateNotificationSettings()">
+                                <option value="telegram">Telegram</option>
+                                <option value="signal">Signal (Coming Soon)</option>
+                                <option value="discord">Discord (Coming Soon)</option>
+                                <option value="slack">Slack (Coming Soon)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Settings -->
+                <div id="notificationSettingsContent" class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                        <i class="fab fa-telegram text-blue-400 mr-3"></i>
+                        Telegram Notification Settings
+                    </h2>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Telegram Bot Token
+                            </label>
+                            <input type="text" id="telegram_bot_token" value="{{ settings.telegram_bot_token }}" placeholder="Enter Telegram Bot Token" class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Telegram Chat ID
+                            </label>
+                            <input type="text" id="telegram_chat_id" value="{{ settings.telegram_chat_id }}" placeholder="Enter Telegram Chat ID" class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Certificate Threshold Settings -->
+                <div id="certificateThresholdSettings" class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                        <i class="fas fa-exclamation-triangle text-yellow-400 mr-3"></i>
+                        Certificate Threshold Settings
+                    </h2>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Alert Threshold (Days)
+                            </label>
+                            <input type="number" id="alert_threshold" value="{{ settings.alert_threshold }}" min="1" placeholder="Days before critical alert" class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300">
+                            <p class="text-xs text-gray-400 mt-1">
+                                Send critical alert when certificates expire within this many days
+                            </p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Warning Threshold (Days)
+                            </label>
+                            <input type="number" id="warning_threshold" value="{{ settings.warning_threshold }}" min="1" placeholder="Days before warning" class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300">
+                            <p class="text-xs text-gray-400 mt-1">
+                                Send warning notification when certificates expire within this many days
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Change Settings -->
+                <div id="passwordChangeSettings" class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                        <i class="fas fa-lock text-green-400 mr-3"></i>
+                        Change Admin Password
+                    </h2>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Current Password
+                            </label>
+                            <input type="password" id="current_password" placeholder="Enter current password" class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                New Password
+                            </label>
+                            <input type="password" id="new_password" placeholder="Enter new password" class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="flex justify-end">
+                    <button type="button" onclick="updateSettings()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 flex items-center">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overlay Modal for Notifications -->
+    <div id="notificationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg p-6  shadow-lg text-gray-900">
+            <h2 class="text-xl font-semibold mb-4">Notification</h2>
+            <p id="notificationMessage" class="mb-4"></p>
+            <button onclick="closeModal()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function closeModal() {
+            document.getElementById('notificationModal').classList.add('hidden');
+        }
+
+        function showNotification(message) {
+            document.getElementById('notificationMessage').innerText = message;
+            document.getElementById('notificationModal').classList.remove('hidden');
+        }
+
+        function updateNotificationSettings() {
+            const channel = document.getElementById('notification_channel').value;
+            const notificationSettingsContent = document.getElementById('notificationSettingsContent');
+            let settingsHTML = '';
+
+            switch (channel) {
+                case 'telegram':
+                    settingsHTML = `
+                        <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                            <i class="fab fa-telegram text-blue-400 mr-3"></i>
+                            Telegram Notification Settings
+                        </h2>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Telegram Bot Token
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="telegram_bot_token" 
+                                    value="{{ settings.telegram_bot_token }}"
+                                    placeholder="Enter Telegram Bot Token"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Telegram Chat ID
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="telegram_chat_id" 
+                                    value="{{ settings.telegram_chat_id }}"
+                                    placeholder="Enter Telegram Chat ID"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'signal':
+                    settingsHTML = `
+                        <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                            <i class="fas fa-signal text-blue-400 mr-3"></i>
+                            Signal Notification Settings
+                        </h2>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Signal Bot Token
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="signal_bot_token" 
+                                    value="{{ settings.signal_bot_token }}"
+                                    placeholder="Enter Signal Bot Token"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Signal Chat ID
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="signal_chat_id" 
+                                    value="{{ settings.signal_chat_id }}"
+                                    placeholder="Enter Signal Chat ID"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'discord':
+                    settingsHTML = `
+                        <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                            <i class="fab fa-discord text-blue-400 mr-3"></i>
+                            Discord Notification Settings
+                        </h2>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Discord Bot Token
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="discord_bot_token" 
+                                    value="{{ settings.discord_bot_token }}"
+                                    placeholder="Enter Discord Bot Token"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Discord Channel ID
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="discord_channel_id" 
+                                    value="{{ settings.discord_channel_id }}"
+                                    placeholder="Enter Discord Channel ID"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'slack':
+                    settingsHTML = `
+                        <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                            <i class="fab fa-slack text-blue-400 mr-3"></i>
+                            Slack Notification Settings
+                        </h2>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Slack Bot Token
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="slack_bot_token" 
+                                    value="{{ settings.slack_bot_token }}"
+                                    placeholder="Enter Slack Bot Token"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">
+                                    Slack Channel ID
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="slack_channel_id" 
+                                    value="{{ settings.slack_channel_id }}"
+                                    placeholder="Enter Slack Channel ID"
+                                    class="w-full bg-gray-700 text-white p-3 rounded-md focus:ring-2 focus:ring-blue-500 transition duration-300"
+                                >
+                            </div>
+                        </div>
+                    `;
+                    break;
+            }
+
+            notificationSettingsContent.innerHTML = settingsHTML;
+        }
+
+        function updateSettings() {
+            const formData = {
+                notification_channel: document.getElementById('notification_channel').value,
+                telegram_bot_token: document.getElementById('telegram_bot_token') ? document.getElementById('telegram_bot_token').value : '',
+                telegram_chat_id: document.getElementById('telegram_chat_id') ? document.getElementById('telegram_chat_id').value : '',
+                signal_bot_token: document.getElementById('signal_bot_token') ? document.getElementById('signal_bot_token').value : '',
+                signal_chat_id: document.getElementById('signal_chat_id') ? document.getElementById('signal_chat_id').value : '',
+                discord_bot_token: document.getElementById('discord_bot_token') ? document.getElementById('discord_bot_token').value : '',
+                discord_channel_id: document.getElementById('discord_channel_id') ? document.getElementById('discord_channel_id').value : '',
+                slack_bot_token: document.getElementById('slack_bot_token') ? document.getElementById('slack_bot_token').value : '',
+                slack_channel_id: document.getElementById('slack_channel_id') ? document.getElementById('slack_channel_id').value : '',
+                alert_threshold: document.getElementById('alert_threshold').value,
+                warning_threshold: document.getElementById('warning_threshold').value,
+                current_password: document.getElementById('current_password').value,
+                new_password: document.getElementById('new_password').value
+            };
+
+            // Add input validation
+            if (formData.alert_threshold && isNaN(parseInt(formData.alert_threshold))) {
+                showNotification('Alert threshold must be a valid number');
+                return;
+            }
+
+            if (formData.warning_threshold && isNaN(parseInt(formData.warning_threshold))) {
+                showNotification('Warning threshold must be a valid number');
+                return;
+            }
+
+            axios.post('/settings', formData)
+                .then(response => {
+                    if (response.data.success) {
+                        // Optional: Update form fields with returned settings
+                        if (response.data.settings) {
+                            const settings = response.data.settings;
+                            document.getElementById('alert_threshold').value = settings.alert_threshold;
+                            document.getElementById('warning_threshold').value = settings.warning_threshold;
+                        }
+                        
+                        showNotification('Settings updated successfully!');
+                    } else {
+                        showNotification(response.data.message || 'Error updating settings');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('An error occurred while updating settings');
+                });
+        }
+    </script>
+</body>
+</html>

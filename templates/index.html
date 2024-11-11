@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSL Certs Expiration Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+        }
+        .sortable-header:hover {
+            opacity: 0.7;
+        }
+    </style>
+    <script>
+        function toggleMode() {
+            const body = document.body;
+            const elementsToToggle = document.querySelectorAll('.bg-gray-900, .bg-white, .text-white, .text-black, .bg-gray-800, .bg-gray-700, .text-gray-400, .text-gray-900, .bg-gray-200, .text-gray-800');
+            
+            body.classList.toggle('bg-gray-900');
+            body.classList.toggle('bg-white');
+            body.classList.toggle('text-white');
+            body.classList.toggle('text-black');
+            
+            elementsToToggle.forEach(element => {
+                element.classList.toggle('bg-gray-900');
+                element.classList.toggle('bg-white');
+                element.classList.toggle('text-white');
+                element.classList.toggle('text-black');
+                element.classList.toggle('bg-gray-800');
+                element.classList.toggle('bg-gray-200');
+                element.classList.toggle('bg-gray-700');
+                element.classList.toggle('bg-gray-300');
+                element.classList.toggle('text-gray-400');
+                element.classList.toggle('text-gray-900');
+                element.classList.toggle('text-gray-800');
+            });
+        }
+
+        function showAddSiteModal() {
+            document.getElementById('addSiteModal').classList.remove('hidden');
+        }
+
+        function closeAddSiteModal() {
+            document.getElementById('addSiteModal').classList.add('hidden');
+        }
+
+        function showSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function addSite() {
+            const domain = document.getElementById('domain').value;
+            const port = document.getElementById('port').value || 443;
+
+            fetch('/add_site', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    domain: domain,
+                    port: parseInt(port)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeAddSiteModal();
+                    location.reload();
+                } else {
+                    alert(data.message || 'Error adding site');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding site');
+            });
+        }
+
+        function editSite(id) {
+            const domain = prompt("Enter the new domain name:");
+            if (domain) {
+                axios.post(`/edit_site/${id}`, { domain: domain })
+                    .then(response => {
+                        if (response.data.success) {
+                            location.reload();
+                        } else {
+                            alert("Failed to edit site");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("An error occurred while editing the site");
+                    });
+            }
+        }
+
+        function deleteSite(id) {
+            if (confirm("Are you sure you want to delete this site?")) {
+                axios.post(`/delete_site/${id}`)
+                    .then(response => {
+                        if (response.data.success) {
+                            location.reload();
+                        } else {
+                            alert("Failed to delete site");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert("An error occurred while deleting the site");
+                    });
+            }
+        }
+
+        function exportCSV() {
+            window.location.href = '/export_csv';
+        }
+
+        function calculateOverview() {
+            const sites = document.querySelectorAll('#sitesTableBody tr');
+            let alerts = 0;
+            let warnings = 0;
+            let ok = 0;
+
+            sites.forEach(site => {
+                if (site.classList.contains('bg-red-500')) {
+                    alerts++;
+                } else if (site.classList.contains('bg-yellow-400')) {
+                    warnings++;
+                } else if (site.classList.contains('bg-green-500')) {
+                    ok++;
+                }
+            });
+
+            document.getElementById('totalSites').textContent = sites.length;
+            document.getElementById('alerts').textContent = alerts;
+            document.getElementById('warnings').textContent = warnings;
+            document.getElementById('ok').textContent = ok;
+        }
+
+        function sortTable(n) {
+            var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            table = document.getElementById("sitesTable");
+            switching = true;
+            dir = "asc";
+
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+
+                    if (dir == "asc") {
+                        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else if (dir == "desc") {
+                        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount == 0 && dir == "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+        }
+
+        function searchSites() {
+            var input, filter, table, tr, td, i, txtValue;
+            input = document.getElementById("siteSearch");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("sitesTable");
+            tr = table.getElementsByTagName("tr");
+
+            for (i = 1; i < tr.length; i++) {
+                td = tr[i].getElementsByTagName("td")[1];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        window.onload = function() {
+            calculateOverview();
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-4">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center text-2xl font-bold">
+                <i class="fas fa-shield-alt text-3xl mr-2"></i>
+                SSL Certs Expiration Tracker
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="https://github.com/tolalengoss/sslexpirytracker" target="_blank" class="text-white hover:text-gray-400">
+                    <i class="fab fa-github text-4xl"></i>
+                </a>
+                <button onclick="toggleMode()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                    Switch Mode
+                </button>
+                 <a href="{{ url_for('settings') }}" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+                <a href="{{ url_for('logout') }}" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 p-4 rounded-lg mb-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-chart-bar text-white text-2xl mr-2"></i>
+                    <span class="text-xl font-bold">Overview</span>
+                </div>
+            </div>
+            <div class ="grid grid-cols-4 gap-4 mt-4">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-700 p-4 rounded-lg text-center shadow-lg transform transition duration-500 hover:scale-105">
+                    <i class="fas fa-globe text-white text-3xl mb-2"></i>
+                    <div class="text-3xl font-bold" id="totalSites">0</div>
+                    <div class="text-white">Total Sites</div>
+                </div>
+                <div class="bg-gradient-to-r from-red-500 to-red-700 p-4 rounded-lg text-center shadow-lg transform transition duration-500 hover:scale-105">
+                    <i class="fas fa-exclamation-triangle text-white text-3xl mb-2"></i>
+                    <div class="text-3xl font-bold" id="alerts">0</div>
+                    <div class="text-white">Alerts</div>
+                </div>
+                <div class="bg-gradient-to-r from-yellow-400 to-yellow-600 p-4 rounded-lg text-center shadow-lg transform transition duration-500 hover:scale-105">
+                    <i class="fas fa-exclamation-circle text-white text-3xl mb-2"></i>
+                    <div class="text-3xl font-bold" id="warnings">0</div>
+                    <div class="text-white">Warnings</div>
+                </div>
+                <div class="bg-gradient-to-r from-green-500 to-green-700 p-4 rounded-lg text-center shadow-lg transform transition duration-500 hover:scale-105">
+                    <i class="fas fa-check-circle text-white text-3xl mb-2"></i>
+                    <div class="text-3xl font-bold" id="ok">0</div>
+                    <div class="text-white">OK</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 p-4 rounded-lg">
+            <div class="flex justify-between items-center mb-4">
+                <input type="text" id="siteSearch" onkeyup="searchSites()" placeholder="Search by site..." class="bg-gray-700 text-white p-2 rounded-lg w-1/3">
+                <div class="flex space-x-4">
+                    <button onclick="showAddSiteModal()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Add New Site
+                    </button>
+                    <button onclick="exportCSV()" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <table id="sitesTable" class="w-full text-left border-collapse border border-gray-600">
+                <thead>
+                    <tr class="bg-gray-700">
+                        <th class="p-2 border border-gray-600 sortable-header" onclick="sortTable(0)">No <i class="fas fa-sort"></i></th>
+                        <th class="p-2 border border-gray-600 sortable-header" onclick="sortTable(1)">Site <i class="fas fa-sort"></i></th>
+                        <th class="p-2 border border-gray-600 sortable-header" onclick="sortTable(2)">Issuer <i class="fas fa-sort"></i></th>
+                        <th class="p-2 border border-gray-600 sortable-header" onclick="sortTable(3)">Expiration Date <i class="fas fa-sort"></i></th>
+                        <th class="p-2 border border-gray-600 sortable-header" onclick="sortTable(4)">Days Left <i class="fas fa-sort"></i></th>
+                        <th class="p-2 border border-gray-600 sortable-header" onclick="sortTable(5)">Status <i class="fas fa-sort"></i></th>
+                        <th class="p-2 border border-gray-600 sortable-header" onclick="sortTable(6)">Last Notified <i class="fas fa-sort"></i></th>
+                        <th class="p-2 border border-gray-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sitesTableBody">
+                    {% for site in sites %}
+             <tr class="{% if site.days_left <= 15 %}bg-red-500 text-white{% elif site.days_left <= 60 %}bg-yellow-400 text-black{% else %}bg-green-500 text-white{% endif %} border border-gray-600">
+                        <td class="p-2 border border-gray-600">{{ loop.index }}</td>
+                        <td class="p-2 border border-gray-600">{{ site.domain }}</td>
+                        <td class="p-2 border border-gray-600">{{ site.issuer }}</td>
+                        <td class="p-2 border border-gray-600">{{ site.expiration_date.strftime('%b %d %Y') }}</td>
+                        <td class="p-2 border border-gray-600">{{ site.days_left }}</td>
+                        <td class="p-2 border border-gray-600">
+                            {% if site.days_left <= 15 %}
+                                Alert
+                            {% elif site.days_left <= 60 %}
+                                Warning
+                            {% else %}
+                                OK
+                            {% endif %}
+                        </td>
+                        <td class="p-2 border border-gray-600">{{ site.last_notified.strftime('%Y/%m/%d | %I:%M%p') if site.last_notified else 'Never' }}</td>
+                        <td class="p-2 border border-gray-600 flex space-x-2">
+                            <button onclick="editSite({{ site.id }})" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded">
+                                Edit
+                            </button>
+                            <button onclick="deleteSite({{ site.id }})" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer class="bg-gray-800 text-center py-4 mt-4 rounded-lg">
+        <p class="text-gray-400">© 2024 All rights reserved.</p>
+        <p class="text-gray-400">
+            Built with <i class="fas fa-heart text-red-500"></i> by 
+            <a href="https://github.com/tolalengoss" target="_blank" class="text-blue-500 hover:text-blue-700">
+                <i class="fab fa-github"></i> tolaleng
+            </a> in Phnom Penh, Cambodia
+        </p>
+    </footer>
+
+    <div id="addSiteModal" class="fixed inset-0 modal-overlay hidden">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-white">Add New Site</h3>
+                    <button onclick="closeAddSiteModal()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form onsubmit="event.preventDefault(); addSite();">
+                    <div class="mb-4">
+                        <label for="domain" class="block text-gray-300 text-sm font-bold mb-2">Domain:</label>
+                        <input type="text" id="domain" required 
+                               class="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="example.com">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="port" class="block text-gray-300 text-sm font-bold mb-2">Port:</label>
+                        <input type="number" id="port"
+                               class="w-full px-3 py-2 bg-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="443" value="443">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" onclick="closeAddSiteModal()"
+                                class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Add Site
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+</body>
+</html>
